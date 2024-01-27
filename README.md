@@ -11,7 +11,7 @@ Middleware defines HTTP endpoints for login ("/login"), logout ("/logout"), and 
 A secure ("/") route is implemented using the [Authorize] attribute, ensuring only authenticated users can access it.
 The middleware orchestrates the display of a basic login form at "/login" for user authentication.
 
-2.Code Organization and Middleware Structure
+2. Code Organization and Middleware Structure
 Core authentication and authorization processes are encapsulated within middleware components.
 
 3. Authorization Configuration
