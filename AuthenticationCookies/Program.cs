@@ -1,26 +1,33 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using System.Security.Claims;
 
 namespace AuthenticationCookies
 {
     public class Program
     {
-        record class Person(string Email, string Password);
-
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            var adminRole = new Role("admin");
+            var userRole = new Role("user");
 
             var people = new List<Person>
             {
-                new Person("ivan@gmail.com", "123"),
-                new Person("ela@gmail.com", "111")
+                new Person("ivan@gmail.com", "123", adminRole),
+                new Person("ela@gmail.com", "111", userRole)
             };
 
+            var builder = WebApplication.CreateBuilder(args);
+
             builder.Services.AddAuthentication("Cookies")
-                            .AddCookie(option => option.LoginPath = "/login");
+                            .AddCookie(option =>
+                            {
+                                option.LoginPath = "/login";
+                                option.AccessDeniedPath = "/accessdenied";
+                            });
+                                
             //builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme) exactly that (builder.Services.AddAuthentication("Cookies");)
             
             builder.Services.AddAuthorization();
@@ -56,22 +63,33 @@ namespace AuthenticationCookies
                  </html>";
                 await context.Response.WriteAsync(loginForm);
             });
+
             app.MapPost("/login", async (string? returnUrl, HttpContext context) =>
             {
                 var form = context.Request.Form;
                 if (!form.ContainsKey("email") || !form.ContainsKey("password"))
-                    return Results.BadRequest("incorrect Email or Password");
-
-                string email = form["email"];   
+                    return Results.BadRequest("Email or password not set");
+                string email = form["email"];
                 string password = form["password"];
+
                 Person? person = people.FirstOrDefault(p => p.Email == email && p.Password == password);
-                if (person == null) 
+                if (person == null)
                     return Results.Unauthorized();
-                var claims = new List<Claim> { new Claim(ClaimTypes.Name, person.Email) };
+
+                var claims = new List<Claim>
+                {
+                    new Claim (ClaimsIdentity.DefaultNameClaimType, person.Email),
+                    new Claim (ClaimsIdentity.DefaultRoleClaimType, person.Role.Name)
+                };
                 ClaimsIdentity claimsIdentity = new ClaimsIdentity(claims, "Cookies");
-                await context.SignInAsync("Cookies", new ClaimsPrincipal(claimsIdentity));
-                return Results.Redirect(returnUrl??"/");
+                ClaimsPrincipal claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+                await context.SignInAsync(claimsPrincipal);
+                return Results.Redirect(returnUrl ?? "/");
             });
+
+            app.Map("/admin", [Authorize(Roles = "admin")] () => "Admin Panel");
+
+            app.MapGet("/", [Authorize(Roles = "admin, user")] () => "Hello World!");
 
             app.MapGet("/logout", async (HttpContext context) =>
             {
@@ -79,10 +97,13 @@ namespace AuthenticationCookies
                 return Results.Redirect("/login");
             });
 
-            app.MapGet("/", [Authorize] () => "Hello World!");
+            app.MapGet("/accessdenied", async (context) =>
+            {
+                context.Response.StatusCode = 403;
+                await context.Response.WriteAsync("Access Denied");
+            });
 
             app.Run();
-
         }
     }
 }

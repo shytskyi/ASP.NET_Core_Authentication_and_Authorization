@@ -1,5 +1,5 @@
 # Repository Description:
-This Git repository houses an ASP.NET Core project implemented in Visual Studio using the "ASP.NET Core Empty" template. 
+This Git repository hosts ASP.NET Core project implemented in Visual Studio using the "ASP.NET Core Empty" template. 
 The project focuses on authentication and authorization functionalities through the use of Microsoft.AspNetCore.Authentication and Microsoft.AspNetCore.Authorization libraries.
 
 Key Aspects and Features:
